@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 public class Biblioteca {
     // Atributos de la clase
@@ -15,7 +16,9 @@ public class Biblioteca {
     private JTable tablaLibros;
     private DefaultTableModel modeloTabla;
     private JTextField txtTitulo, txtAutor, txtEditorial;
-    private JButton btnAgregar, btnEliminar, btnBuscar, btnInstrucciones, btnExportar;
+    private JButton btnAgregar, btnEliminar, btnBuscar, btnInstrucciones, btnExportar, btnEstado;
+    private int filaEnEdicion = -1;
+    private JButton btnEditar;
 
     // Clase interna para representar Libro
     private class Libro {
@@ -36,11 +39,11 @@ public class Biblioteca {
     public Biblioteca() {
         libros = new ArrayList<>();
         crearInterfaz();
+        cargarDatosGuardados();
     }
 
     // Método para crear la interfaz
     private void crearInterfaz() {
-    // 1. Configuración General
     ventanaPrincipal = new JFrame("📚 GESTOR DE LIBROS");
     ventanaPrincipal.setSize(900, 500);
     ventanaPrincipal.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -59,7 +62,6 @@ public class Biblioteca {
     lblHeader.setForeground(new Color(100, 100, 100));
     lblHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-    // Crear campos con un estilo vertical
     txtTitulo = new JTextField();
     txtAutor = new JTextField();
     txtEditorial = new JTextField();
@@ -83,7 +85,7 @@ public class Biblioteca {
         txtEditorial.setAlignmentX(Component.LEFT_ALIGNMENT);
         txtEditorial.setFont(fuenteInputs);
 
-    // Agregamos elementos al panel lateral APILADOS
+    // Agregamos elementos al panel
     panelLateral.add(lblHeader);
     panelLateral.add(Box.createVerticalStrut(20));
 
@@ -108,40 +110,46 @@ public class Biblioteca {
     btnAgregar.setMaximumSize(new Dimension(250, 40));
     btnAgregar.setAlignmentX(Component.LEFT_ALIGNMENT);
     
-    // Resto de botones
+    // Botones secundarios
+    btnEditar = new JButton("✏️ Editar");
+        styleButton(btnEditar);
+    btnEstado = new JButton("🔄 Prestar/Devolver");
+        styleButton(btnEstado);
     btnEliminar = new JButton("🗑 Eliminar");
+        styleButton(btnEliminar);
     btnBuscar = new JButton("🔍 Buscar");
+        styleButton(btnBuscar);
     btnExportar = new JButton("📄 Exportar CSV");
+        styleButton(btnExportar);
     btnInstrucciones = new JButton("❓ Ayuda");
+        styleButton(btnInstrucciones);
 
-    // Ajuste de estilo común para botones secundarios
-    styleButton(btnEliminar);
-    styleButton(btnBuscar);
-    styleButton(btnExportar);
-    styleButton(btnInstrucciones);
-
-    // Agregar botones al lateral
+    // Botones laterales
     panelLateral.add(btnAgregar);
+    panelLateral.add(Box.createVerticalStrut(10));
+    panelLateral.add(btnEditar);
+    panelLateral.add(Box.createVerticalStrut(10));
+    panelLateral.add(btnEstado); 
     panelLateral.add(Box.createVerticalStrut(10));
     panelLateral.add(btnEliminar);
     panelLateral.add(Box.createVerticalStrut(10));
     panelLateral.add(btnBuscar);
     panelLateral.add(Box.createVerticalStrut(10));
     panelLateral.add(btnExportar);
-    
-    // El botón de ayuda
     panelLateral.add(Box.createVerticalGlue()); 
     panelLateral.add(btnInstrucciones);
 
     // Listeners
     btnAgregar.addActionListener(e -> agregarLibro());
+    btnEditar.addActionListener(e -> cargarDatosParaEditar());
+    btnEstado.addActionListener(e -> cambiarEstado());
     btnEliminar.addActionListener(e -> eliminarLibro());
     btnBuscar.addActionListener(e -> buscarLibro());
     btnExportar.addActionListener(e -> exportarLibrosACSV());
     btnInstrucciones.addActionListener(e -> mostrarInstrucciones());
 
 
-    // --- PANEL CENTRAL (TABLA) ---
+    // TABLA (Panel Central)
     String[] columnas = {"Título", "Autor", "Editorial", "Estado"};
     modeloTabla = new DefaultTableModel(columnas, 0);
     
@@ -174,33 +182,77 @@ public class Biblioteca {
             ventanaPrincipal.setVisible(true);
         });
     }
-
-    // Método para agregar libro
+    
+    // Método para agregar o editar libro
     private void agregarLibro() {
         String titulo = txtTitulo.getText().trim();
         String autor = txtAutor.getText().trim();
-        String editorial = txtEditorial.getText().trim();
+        String textoEditorial = txtEditorial.getText().trim();
 
-        if (!titulo.isEmpty() && !autor.isEmpty() && !editorial.isEmpty()) {
-            Libro nuevoLibro = new Libro(titulo, autor, editorial);
-            libros.add(nuevoLibro);
+        if (!titulo.isEmpty() && !autor.isEmpty() && !textoEditorial.isEmpty()) {
             
-            modeloTabla.addRow(new Object[]{
-                nuevoLibro.titulo, 
-                nuevoLibro.autor, 
-                nuevoLibro.editorial, 
-                nuevoLibro.prestado ? "Prestado" : "Disponible"
-            });
+            if (filaEnEdicion == -1) {
+                //MODO AGREGAR NUEVO
+                Libro nuevoLibro = new Libro(titulo, autor, textoEditorial);
+                libros.add(nuevoLibro);
+                
+                modeloTabla.addRow(new Object[]{
+                    nuevoLibro.titulo, 
+                    nuevoLibro.autor, 
+                    nuevoLibro.editorial, 
+                    nuevoLibro.prestado ? "Prestado" : "Disponible"
+                });
+            } else {
+                //MODO EDITAR
+                Libro libroEditado = libros.get(filaEnEdicion);
+                libroEditado.titulo = titulo;
+                libroEditado.autor = autor;
+                libroEditado.editorial = textoEditorial; 
+                
+                // Actualizamos la TABLA
+                modeloTabla.setValueAt(titulo, filaEnEdicion, 0);
+                modeloTabla.setValueAt(autor, filaEnEdicion, 1);
+                modeloTabla.setValueAt(textoEditorial, filaEnEdicion, 2);
+                
+                // Restaurar interfaz
+                filaEnEdicion = -1;
+                btnAgregar.setText("AGREGAR LIBRO");
+                btnAgregar.setBackground(new Color(231, 76, 60));
+            }
 
+            guardarCambios(); 
+            
+            // Limpiar campos
             txtTitulo.setText("");
             txtAutor.setText("");
             txtEditorial.setText("");
             txtTitulo.requestFocus();
+            
         } else {
             JOptionPane.showMessageDialog(ventanaPrincipal, 
-                "Todos los campos son obligatorios", 
-                "Error", 
-                JOptionPane.ERROR_MESSAGE);
+                "Todos los campos son obligatorios", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void cargarDatosParaEditar() {
+        int fila = tablaLibros.getSelectedRow();
+        
+        if (fila != -1) {
+            //Rellenar las cajas de texto con los datos de la fila
+            txtTitulo.setText((String) modeloTabla.getValueAt(fila, 0));
+            txtAutor.setText((String) modeloTabla.getValueAt(fila, 1));
+            txtEditorial.setText((String) modeloTabla.getValueAt(fila, 2));
+            
+            //Cambiar el estado a "Editando"
+            filaEnEdicion = fila;
+            
+            //Cambiar visualmente el botón principal para avisar al usuario
+            btnAgregar.setText("GUARDAR CAMBIOS");
+            btnAgregar.setBackground(new Color(39, 174, 96));
+            
+        } else {
+            JOptionPane.showMessageDialog(ventanaPrincipal, 
+                "Selecciona un libro de la tabla para editar", "Aviso", JOptionPane.WARNING_MESSAGE);
         }
     }
 
@@ -219,6 +271,7 @@ public class Biblioteca {
             if(confirm == JOptionPane.YES_OPTION) {
                 libros.removeIf(libro -> libro.editorial.equals(editorial));
                 modeloTabla.removeRow(filaSeleccionada);
+                guardarCambios();
             }
         } else {
             JOptionPane.showMessageDialog(ventanaPrincipal, 
@@ -271,6 +324,29 @@ public class Biblioteca {
             } else {
                 JOptionPane.showMessageDialog(ventanaPrincipal, "No se encontraron libros con ese criterio.");
             }
+        }
+    }
+    
+    // Método para cambiar el estado (Prestar/Devolver)
+    private void cambiarEstado() {
+        int filaSeleccionada = tablaLibros.getSelectedRow();
+        
+        if (filaSeleccionada != -1) {
+            // Obtener el libro de la lista
+            Libro libro = libros.get(filaSeleccionada);
+            
+            // Invertir el estado
+            libro.prestado = !libro.prestado;
+            
+            // Actualizar la Tabla Visualmente
+            modeloTabla.setValueAt(libro.prestado ? "Prestado" : "Disponible", filaSeleccionada, 3);
+            
+            // Guardar el cambio en el archivo
+            guardarCambios();
+            
+        } else {
+            JOptionPane.showMessageDialog(ventanaPrincipal, 
+                "Selecciona un libro para cambiar su estado", "Aviso", JOptionPane.WARNING_MESSAGE);
         }
     }
 
@@ -349,7 +425,7 @@ public class Biblioteca {
         );
     }
 
-    // Método para crear etiquetas alineadas a la izquierda
+    // Método para crear etiquetas alineadas
 private JLabel crearLabel(String texto) {
     JLabel lbl = new JLabel(texto);
     lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -358,13 +434,52 @@ private JLabel crearLabel(String texto) {
     return lbl;
 }
 
-// Método para estilizar botones secundarios
+// Método para botones secundarios
 private void styleButton(JButton btn) {
     btn.setMaximumSize(new Dimension(250, 30));
     btn.setAlignmentX(Component.LEFT_ALIGNMENT);
     btn.setBackground(Color.WHITE);
     btn.setFocusPainted(false);
 }
+
+//MÉTODOS DE GUARDAR Y CARGAR
+    private void guardarCambios() {
+        try (PrintWriter writer = new PrintWriter(new File("datos_biblioteca.txt"))) {
+            for (Libro libro : libros) {
+                writer.println(libro.titulo + ";" + libro.autor + ";" + libro.editorial + ";" + libro.prestado);
+            }
+        } catch (Exception e) {
+            System.err.println("Error al guardar datos: " + e.getMessage());
+        }
+    }
+
+    private void cargarDatosGuardados() {
+        File archivo = new File("datos_biblioteca.txt");
+        if (!archivo.exists()) return;
+
+        try (Scanner scanner = new Scanner(archivo)) {
+            while (scanner.hasNextLine()) {
+                String linea = scanner.nextLine();
+                String[] partes = linea.split(";");
+                if (partes.length >= 4) { 
+                    Libro libro = new Libro(partes[0], partes[1], partes[2]);
+                    libro.prestado = Boolean.parseBoolean(partes[3]);
+                    
+                    libros.add(libro);
+                    
+                    modeloTabla.addRow(new Object[]{
+                        libro.titulo, 
+                        libro.autor, 
+                        libro.editorial, 
+                        libro.prestado ? "Prestado" : "Disponible"
+                    });
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error al cargar datos: " + e.getMessage());
+        }
+    }
+   
     public static void main(String[] args) {
         
         try {
