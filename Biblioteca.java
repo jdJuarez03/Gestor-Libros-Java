@@ -14,20 +14,20 @@ public class Biblioteca {
     private JFrame ventanaPrincipal;
     private JTable tablaLibros;
     private DefaultTableModel modeloTabla;
-    private JTextField txtTitulo, txtAutor, txtIsbn;
+    private JTextField txtTitulo, txtAutor, txtEditorial;
     private JButton btnAgregar, btnEliminar, btnBuscar, btnInstrucciones, btnExportar;
 
     // Clase interna para representar Libro
     private class Libro {
         String titulo;
         String autor;
-        String isbn;
+        String editorial;
         boolean prestado;
 
-        Libro(String titulo, String autor, String isbn) {
+        Libro(String titulo, String autor, String editorial) {
             this.titulo = titulo;
             this.autor = autor;
-            this.isbn = isbn;
+            this.editorial = editorial;
             this.prestado = false;
         }
     }
@@ -62,7 +62,7 @@ public class Biblioteca {
     // Crear campos con un estilo vertical
     txtTitulo = new JTextField();
     txtAutor = new JTextField();
-    txtIsbn = new JTextField();
+    txtEditorial = new JTextField();
     
     Dimension dimCaja = new Dimension(Integer.MAX_VALUE, 30); 
     Dimension dimBoton = new Dimension(Integer.MAX_VALUE, 40);
@@ -78,10 +78,10 @@ public class Biblioteca {
         txtAutor.setAlignmentX(Component.LEFT_ALIGNMENT);
         txtAutor.setFont(fuenteInputs);
         
-        txtIsbn = new JTextField();
-        txtIsbn.setMaximumSize(dimCaja);
-        txtIsbn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        txtIsbn.setFont(fuenteInputs);
+        txtEditorial = new JTextField();
+        txtEditorial.setMaximumSize(dimCaja);
+        txtEditorial.setAlignmentX(Component.LEFT_ALIGNMENT);
+        txtEditorial.setFont(fuenteInputs);
 
     // Agregamos elementos al panel lateral APILADOS
     panelLateral.add(lblHeader);
@@ -95,8 +95,8 @@ public class Biblioteca {
     panelLateral.add(txtAutor);
     panelLateral.add(Box.createVerticalStrut(10));
 
-    panelLateral.add(crearLabel("ISBN:"));
-    panelLateral.add(txtIsbn);
+    panelLateral.add(crearLabel("Editorial:"));
+    panelLateral.add(txtEditorial);
     panelLateral.add(Box.createVerticalStrut(30));
 
     // --- BOTONES EN EL LATERAL ---
@@ -109,7 +109,7 @@ public class Biblioteca {
     btnAgregar.setAlignmentX(Component.LEFT_ALIGNMENT);
     
     // Resto de botones
-    btnEliminar = new JButton("🗑 Eliminar Selección");
+    btnEliminar = new JButton("🗑 Eliminar");
     btnBuscar = new JButton("🔍 Buscar");
     btnExportar = new JButton("📄 Exportar CSV");
     btnInstrucciones = new JButton("❓ Ayuda");
@@ -142,7 +142,7 @@ public class Biblioteca {
 
 
     // --- PANEL CENTRAL (TABLA) ---
-    String[] columnas = {"Título", "Autor", "ISBN", "Estado"};
+    String[] columnas = {"Título", "Autor", "Editorial", "Estado"};
     modeloTabla = new DefaultTableModel(columnas, 0);
     
     tablaLibros = new JTable(modeloTabla) {
@@ -179,22 +179,22 @@ public class Biblioteca {
     private void agregarLibro() {
         String titulo = txtTitulo.getText().trim();
         String autor = txtAutor.getText().trim();
-        String isbn = txtIsbn.getText().trim();
+        String editorial = txtEditorial.getText().trim();
 
-        if (!titulo.isEmpty() && !autor.isEmpty() && !isbn.isEmpty()) {
-            Libro nuevoLibro = new Libro(titulo, autor, isbn);
+        if (!titulo.isEmpty() && !autor.isEmpty() && !editorial.isEmpty()) {
+            Libro nuevoLibro = new Libro(titulo, autor, editorial);
             libros.add(nuevoLibro);
             
             modeloTabla.addRow(new Object[]{
                 nuevoLibro.titulo, 
                 nuevoLibro.autor, 
-                nuevoLibro.isbn, 
+                nuevoLibro.editorial, 
                 nuevoLibro.prestado ? "Prestado" : "Disponible"
             });
 
             txtTitulo.setText("");
             txtAutor.setText("");
-            txtIsbn.setText("");
+            txtEditorial.setText("");
             txtTitulo.requestFocus();
         } else {
             JOptionPane.showMessageDialog(ventanaPrincipal, 
@@ -208,16 +208,16 @@ public class Biblioteca {
     private void eliminarLibro() {
         int filaSeleccionada = tablaLibros.getSelectedRow();
         if (filaSeleccionada != -1) {
-            String isbn = (String) modeloTabla.getValueAt(filaSeleccionada, 2);
+            String editorial = (String) modeloTabla.getValueAt(filaSeleccionada, 2);
             
             // Confirmación antes de borrar
             int confirm = JOptionPane.showConfirmDialog(ventanaPrincipal, 
-                    "¿Estás seguro de eliminar el libro con ISBN: " + isbn + "?",
+                    "¿Estás seguro de eliminar el libro con Editorial: " + editorial + "?",
                     "Confirmar eliminación",
                     JOptionPane.YES_NO_OPTION);
             
             if(confirm == JOptionPane.YES_OPTION) {
-                libros.removeIf(libro -> libro.isbn.equals(isbn));
+                libros.removeIf(libro -> libro.editorial.equals(editorial));
                 modeloTabla.removeRow(filaSeleccionada);
             }
         } else {
@@ -230,13 +230,13 @@ public class Biblioteca {
 
     // Método para buscar libro
     private void buscarLibro() {
-        String textoBusqueda = JOptionPane.showInputDialog(ventanaPrincipal, "Ingrese título o ISBN:");
+        String textoBusqueda = JOptionPane.showInputDialog(ventanaPrincipal, "Ingrese título o Editorial:");
         
         if (textoBusqueda != null && !textoBusqueda.isEmpty()) {
             List<Libro> resultados = libros.stream()
                 .filter(libro -> 
                     libro.titulo.toLowerCase().contains(textoBusqueda.toLowerCase()) || 
-                    libro.isbn.contains(textoBusqueda))
+                    libro.editorial.contains(textoBusqueda))
                 .toList();
 
             if (!resultados.isEmpty()) {
@@ -252,7 +252,7 @@ public class Biblioteca {
                     
                     panelLibro.add(new JLabel("Título: " + libro.titulo));
                     panelLibro.add(new JLabel("Autor: " + libro.autor));
-                    panelLibro.add(new JLabel("ISBN: " + libro.isbn));
+                    panelLibro.add(new JLabel("Editorial: " + libro.editorial));
                     panelLibro.add(new JLabel("Estado: " + (libro.prestado ? "Prestado" : "Disponible")));
                     
                     panelResultados.add(panelLibro);
@@ -292,13 +292,13 @@ public class Biblioteca {
                 }
 
                 try (PrintWriter writer = new PrintWriter(fileToSave)) {
-                    writer.println("Título,Autor,ISBN,Estado");
+                    writer.println("Título,Autor,Editorial,Estado");
                     
                     for (Libro libro : libros) {
                         writer.println(String.format("%s,%s,%s,%s", 
                             libro.titulo.replace(",", ";"), 
                             libro.autor.replace(",", ";"), 
-                            libro.isbn, 
+                            libro.editorial, 
                             (libro.prestado ? "Prestado" : "Disponible")
                         ));
                     }
@@ -330,7 +330,7 @@ public class Biblioteca {
            Seleccione una fila en la tabla y presione "Eliminar".
 
         3. BUSCAR: 
-           Busque por coincidencia de nombre o número exacto de ISBN.
+           Busque por coincidencia de nombre Editorial.
 
         4. EXPORTAR: 
            Guarde su inventario actual en un archivo Excel/CSV.
